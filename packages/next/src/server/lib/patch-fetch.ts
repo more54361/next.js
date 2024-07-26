@@ -30,11 +30,11 @@ type PatchedFetcher = Fetcher & {
   readonly _nextOriginalFetch: Fetcher
 }
 
-const nextPatchSymbol = Symbol.for('next-patch')
+export const NEXT_PATCH_SYMBOL = Symbol.for('next-patch')
 
 function isFetchPatched() {
   // @ts-ignore
-  return globalThis[nextPatchSymbol] === true
+  return globalThis[NEXT_PATCH_SYMBOL] === true
 }
 
 export function validateRevalidate(
@@ -796,7 +796,7 @@ function createPatchedFetcher(
   patched.__nextGetStaticStore = () => staticGenerationAsyncStorage
   patched._nextOriginalFetch = originFetch
   // @ts-ignore
-  globalThis[nextPatchSymbol] = true
+  globalThis[NEXT_PATCH_SYMBOL] = true
 
   return patched
 }
