@@ -586,7 +586,7 @@ export function createPatchedFetcher(
                 .then(async (arrayBuffer) => {
                   const bodyBuffer = Buffer.from(arrayBuffer)
 
-                  const cachedFetchData = {
+                  const fetchedData = {
                     headers: Object.fromEntries(res.headers.entries()),
                     body: bodyBuffer.toString('base64'),
                     status: res.status,
@@ -595,7 +595,7 @@ export function createPatchedFetcher(
 
                   requestStore?.serverComponentsHmrCache?.set(
                     cacheKey,
-                    cachedFetchData
+                    fetchedData
                   )
 
                   if (isCacheableRevalidate) {
@@ -603,7 +603,7 @@ export function createPatchedFetcher(
                       cacheKey,
                       {
                         kind: 'FETCH',
-                        data: cachedFetchData,
+                        data: fetchedData,
                         revalidate: normalizedRevalidate,
                       },
                       {
