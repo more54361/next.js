@@ -622,13 +622,12 @@ export function createPatchedFetcher(
                         tags,
                       }
                     )
-
-                    await handleUnlock()
                   }
                 })
                 .catch((error) =>
                   console.warn(`Failed to set fetch cache`, input, error)
                 )
+                .finally(handleUnlock)
             }
 
             if (!deferUnlockUntilCacheIsSet) {
