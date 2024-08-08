@@ -249,7 +249,7 @@ mod ser {
                     s.serialize_element::<u8>(&0)?;
                     s.serialize_element(&FunctionAndArg::Borrowed {
                         fn_type: *fn_type,
-                        arg,
+                        arg: &**arg,
                     })?;
                     s.serialize_element(this)?;
                     s.end()
@@ -499,9 +499,6 @@ impl TryFrom<CellContent> for SharedReference {
 pub type TaskCollectiblesMap = AutoMap<RawVc, i32, BuildHasherDefault<FxHasher>, 1>;
 
 pub trait Backend: Sync + Send {
-    #[allow(unused_variables)]
-    fn initialize(&mut self) {}
-
     #[allow(unused_variables)]
     fn startup(&self, turbo_tasks: &dyn TurboTasksBackendApi<Self>) {}
 

@@ -2,18 +2,25 @@ pub struct ChunkedVec<T> {
     chunks: Vec<Vec<T>>,
 }
 
+impl<T> Default for ChunkedVec<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> ChunkedVec<T> {
     pub fn new() -> Self {
         Self { chunks: Vec::new() }
     }
 
     pub fn len(&self) -> usize {
-        if let Some(last) = self.chunks.last() {
-            let free = last.capacity() - self.len();
-            cummulative_chunk_size(self.chunks.len() - 1) - free
-        } else {
-            0
+        for (i, chunk) in self.chunks.iter().enumerate().rev() {
+            if !chunk.is_empty() {
+                let free = chunk.capacity() - chunk.len();
+                return cummulative_chunk_size(i) - free;
+            }
         }
+        0
     }
 
     pub fn push(&mut self, item: T) {
@@ -42,6 +49,10 @@ impl<T> ChunkedVec<T> {
             len: self.len(),
         }
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.chunks.first().map_or(true, |chunk| chunk.is_empty())
+    }
 }
 
 fn chunk_size(chunk_index: usize) -> usize {
@@ -49,7 +60,7 @@ fn chunk_size(chunk_index: usize) -> usize {
 }
 
 fn cummulative_chunk_size(chunk_index: usize) -> usize {
-    8 << (chunk_index + 1) - 8
+    (8 << (chunk_index + 1)) - 8
 }
 
 struct ExactSizeIter<I: Iterator> {

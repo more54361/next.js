@@ -10,12 +10,12 @@ use turbo_tasks::{run_once, trace::TraceRawVcs, TurboTasksApi};
 pub struct Registration {
     execution_lock: OnceLock<()>,
     func: fn(),
-    create_turbo_tasks: fn() -> Arc<dyn TurboTasksApi>,
+    create_turbo_tasks: fn(bool) -> Arc<dyn TurboTasksApi>,
 }
 
 impl Registration {
     #[doc(hidden)]
-    pub const fn new(create_turbo_tasks: fn() -> Arc<dyn TurboTasksApi>, func: fn()) -> Self {
+    pub const fn new(create_turbo_tasks: fn(bool) -> Arc<dyn TurboTasksApi>, func: fn()) -> Self {
         Registration {
             execution_lock: OnceLock::new(),
             func,
@@ -30,8 +30,8 @@ impl Registration {
         self.execution_lock.get_or_init(self.func);
     }
 
-    pub fn create_turbo_tasks(&self) -> Arc<dyn TurboTasksApi> {
-        (self.create_turbo_tasks)()
+    pub fn create_turbo_tasks(&self, initial: bool) -> Arc<dyn TurboTasksApi> {
+        (self.create_turbo_tasks)(initial)
     }
 }
 
@@ -40,11 +40,12 @@ macro_rules! register {
     ($($other_register_fns:expr),* $(,)?) => {{
         use turbo_tasks::TurboTasksApi;
         use std::sync::Arc;
-        fn create_turbo_tasks() -> Arc<dyn TurboTasksApi> {
-            include!(concat!(
+        fn create_turbo_tasks(initial: bool) -> Arc<dyn TurboTasksApi> {
+            let inner = include!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/tests/test_config.trs"
-            ))
+            ));
+            (inner)(initial)
         }
         fn register_impl() {
             $($other_register_fns();)*
@@ -68,7 +69,7 @@ where
     T: TraceRawVcs + Send + 'static,
 {
     registration.ensure_registered();
-    let tt = registration.create_turbo_tasks();
+    let tt = registration.create_turbo_tasks(true);
     run_once(tt, async move { Ok(fut.await) }).await.unwrap()
 }
 
@@ -81,12 +82,17 @@ where
     T: Debug + PartialEq + Eq + TraceRawVcs + Send + 'static,
 {
     registration.ensure_registered();
-    let tt = registration.create_turbo_tasks();
+    let tt = registration.create_turbo_tasks(true);
+    println!("Run #1 (without cache)");
     let first = run_once(tt.clone(), fut()).await?;
-    let second = run_once(tt, fut()).await?;
+    println!("Run #2 (with memory cache, same TurboTasks instance)");
+    let second = run_once(tt.clone(), fut()).await?;
+    tt.stop_and_wait().await;
     assert_eq!(first, second);
-    let tt = registration.create_turbo_tasks();
-    let third = run_once(tt, fut()).await?;
+    let tt = registration.create_turbo_tasks(false);
+    println!("Run #3 (with persistent cache if available, new TurboTasks instance)");
+    let third = run_once(tt.clone(), fut()).await?;
+    tt.stop_and_wait().await;
     assert_eq!(first, third);
     Ok(())
 }
